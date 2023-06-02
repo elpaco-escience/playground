@@ -76,7 +76,7 @@ d <- d %>%
   arrange(language,uid) 
 
 # get streaks: a dataframe of all utterances that occur in a streak 
-streak_cols <- c("uid","language","utterance","utterance_stripped","begin","end","participant","duration","FTO","overlap","nature","nchar","n","freq","rank","streak")
+streak_cols <- c("uid","source","language","utterance","utterance_stripped","begin","end","participant","duration","FTO","overlap","nature","nchar","n","freq","rank","streak")
 
 streaks <- d %>%
   select(all_of(streak_cols)) %>%
@@ -94,5 +94,49 @@ continuers <- streaks %>%
 
 # extract list of UIDs of interest for audio extraction
 write_csv(streaks,'data/continuers_in_streaks.csv')
+
+
+
+# Plot some streaks as example --------------------------------------------
+
+# get some uids for top turns
+topturndata <- d[d$utterance %in% streaks$utterance,]
+
+
+# select some streaks to plot
+
+d |> filter(streak>2) |> 
+  select(uid,utterance_stripped) |>
+  group_by(utterance_stripped) |>
+  slice(1:2)
+
+these_uids <- c("dutch-15-276-328715","dutch-02-101-124408","dutch-15-062-72800")
+
+# generate df with only these extracts
+see <- talkr::convplot(data=d,uids=these_uids,datamode = T) 
+
+# add column `in_streak` to use for highlighting
+# (this is not ideal: we had this in d, convplot has stripped it)
+see <- see |>
+  mutate(in_streak = as.character(ifelse(uid %in% topturndata$uid,1,0)))
+
+see |>
+  ggplot(aes(y=participant_int,fill=in_streak)) +
+  theme_tufte() + ylab("") + theme(legend.position = "none")  + xlab("relative time (ms)") +
+  theme(axis.ticks.y = element_blank()) + theme(plot.title.position = "plot") + 
+  ggtitle("Continuers in their natural sequential environment") +
+  theme_tufte() + ylab("") + theme(legend.position = "none")  + xlab("relative time (ms)") +
+  theme(axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        plot.title.position = "plot",
+        strip.text.y.left = element_text(angle=0,hjust=0)) + 
+  scale_y_continuous(breaks=c(1:max(see$participant_int)),
+                     labels=rev(LETTERS[1:max(see$participant_int)])) +
+  geom_rect(aes(xmin=begin0,xmax=end0,ymin=participant_int-0.6,ymax=participant_int+0.6),
+            linewidth=1) +
+  geom_text(data=see %>% filter(utterance %in% topturndata$utterance),
+            aes(label=utterance_stripped,y=participant_int,x=begin0+90),
+            hjust="left",size=3,colour="black") +
+  facet_wrap(~ scope, nrow=length(unique(see$scope)),strip.position = "left")
 
 
