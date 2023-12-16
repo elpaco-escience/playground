@@ -1,1 +1,1 @@
-Playground: a repo to share work in progress and to test `talkr` and `ifadv` functions while they're under development. Nothing here is guaranteed to work or keep working.
+Playground: a repo to share work in progress and to test [`talkr`](https://github.com/elpaco-escience/talkr/) and [`ifadv`](https://github.com/elpaco-escience/ifadv/) functions while they're under development. Nothing here is guaranteed to work or keep working.
