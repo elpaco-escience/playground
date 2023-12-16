@@ -190,7 +190,7 @@ extract_length <- 600000 # 10 min
 window_size <- 60000 # 1 min
 window_breaks <- as.integer(c(0:round(extract_length/window_size)) * window_size)
 
-these_uids <- these_convos$firstuid
+these_uids <- these_convos$firstuid[1:4]
 
 # create dataframe
 extract <- convplot(data=d,these_uids,datamode=T,before=0,after=extract_length)
@@ -230,10 +230,10 @@ extract |>
             linewidth=0.3,colour="white",fill="lightgrey") +
   scale_colour_viridis(option="plasma",direction=1,begin=0.2,end=0.8) +
   geom_label(data=extract |> filter(nwords==1,topturn==1),
-             aes(x=begin0,colour=rank,y=line-1+participant_int/2,label=utterance_stripped),
-             size=3,label.padding = unit(0.1, "lines"),hjust=0) +
+             aes(x=begin0,fill=rank,y=line-1+participant_int/2,label=utterance_stripped),
+             colour="white",size=2.2,label.padding = unit(0.1, "lines"),hjust=0) +
   facet_wrap(~ scope,ncol=2) 
 filename <- paste0("samples/panel-ifadv-interjections.png")
-ggsave(filename,width=5,height=12,bg="white")
+ggsave(filename,width=8,height=6,bg="white")
 
 
