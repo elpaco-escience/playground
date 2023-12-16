@@ -7,14 +7,14 @@
 
 # packages and useful functions -------------------------------------------
 
-list.of.packages <- c("tidyverse","tidytext","ggthemes","viridis")
-new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) install.packages(new.packages)
-lapply(list.of.packages, require, character.only=T)
-
 # install talkr and ifadv from github
 devtools::install_github("elpaco-escience/talkr")
 devtools::install_github("elpaco-escience/ifadv")
+
+list.of.packages <- c("tidyverse","tidytext","ggthemes","viridis","talkr","ifadv")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+lapply(list.of.packages, require, character.only=T)
 
 # load helper functions
 source("helper_functions.R")
@@ -22,9 +22,6 @@ source("helper_functions.R")
 # prepare data
 
 
-d <- ifadv::ifadv
-
-# get top turns
 d <- ifadv::ifadv
 
 # add topturns: highly frequent recurring turn formats
@@ -103,8 +100,6 @@ interjections_proportional <- interjections |>
 
 interjections_proportional
 
-mean.na(interjections_proportional$prop_interjections)
-
 # all interjections
 interjections_proportional |>
   ungroup() |>
@@ -123,12 +118,7 @@ long_dyadic_convos <- totals_by_source |>
          totaltime > extract_length, 
          notiming == 0) # max n per language
 
-long_dyadic_convos_sampled <- long_dyadic_convos |>
-  group_by(language) |>
-  slice_sample(n=6)
-
-these_convos <- long_dyadic_convos_sampled
-
+these_convos <- long_dyadic_convos |> slice(1:6)
 
 # this for loop takes these_convos
 for(i in 1:nrow(these_convos)) {
@@ -189,3 +179,61 @@ for(i in 1:nrow(these_convos)) {
   
 }
   
+
+
+# We can also plot the actual interjections -------------------------------
+
+
+# generate version with interjections forms as transcribed
+
+extract_length <- 600000 # 10 min
+window_size <- 60000 # 1 min
+window_breaks <- as.integer(c(0:round(extract_length/window_size)) * window_size)
+
+these_uids <- these_convos$firstuid
+
+# create dataframe
+extract <- convplot(data=d,these_uids,datamode=T,before=0,after=extract_length)
+
+# we make lines by categorizing begin values into intervals the width of window_size
+# we drop turns that fall outside the larger interval
+
+# to check: this should use add_lines but that function currently generates an error: 
+# extract <- add_lines(data=extract,line_duration=60000)
+
+extract <- extract |>
+  mutate(end = end - min(begin), # reset timestamps to start from 0
+         begin = begin - min(begin),
+         line = cut(begin,window_breaks,right=F,labels=F)) |>
+  drop_na(line) |>
+  group_by(line) |>
+  mutate(begin0 = begin - min(begin), # reset timestamps to 0 for each new line
+         end0 = end - min(begin)) |>
+  ungroup()
+
+# highlight recurrent one-word turn formats (=interjections) 
+# fill by rank
+
+extract |> 
+  ggplot(aes(y=participant_int)) +
+  theme_tufte() + theme(legend.position = "none",
+                        #strip.text = element_blank(),
+                        axis.ticks.y = element_blank()) +
+  ylab("") + xlab("time (s)") +
+  scale_fill_viridis(option="plasma",direction=1,begin=0.2,end=0.8) +
+  scale_y_reverse(breaks=seq(1,max(extract$line,1)),
+                  labels=seq(1,max(extract$line,1))) +
+  coord_cartesian(xlim=c(0,window_size)) +
+  scale_x_continuous(breaks=seq(0,window_size,10000),
+                     label=seq(0,window_size/1000,10)) +
+  geom_rect(aes(xmin=begin0,xmax=end0,ymin=line-1+participant_int/2-0.2,ymax=line-1+participant_int/2+0.2),
+            linewidth=0.3,colour="white",fill="lightgrey") +
+  scale_colour_viridis(option="plasma",direction=1,begin=0.2,end=0.8) +
+  geom_label(data=extract |> filter(nwords==1,topturn==1),
+             aes(x=begin0,colour=rank,y=line-1+participant_int/2,label=utterance_stripped),
+             size=3,label.padding = unit(0.1, "lines"),hjust=0) +
+  facet_wrap(~ scope,ncol=2) 
+filename <- paste0("samples/panel-ifadv-interjections.png")
+ggsave(filename,width=5,height=12,bg="white")
+
+
