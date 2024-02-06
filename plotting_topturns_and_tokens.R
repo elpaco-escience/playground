@@ -24,6 +24,7 @@ source("helper_functions.R")
 
 d <- ifadv::ifadv
 
+
 # add topturns: highly frequent recurring turn formats
 
 # add topturns: highly frequent recurring turn formats
@@ -74,7 +75,8 @@ totals_by_source <- d |> group_by(language,source) |>
             totaltime = finish - start,
             notiming = sum(is.na(duration)),
             participants = length(unique(participant)),
-            useless = ifelse(notiming==turns,1,0))
+            useless = ifelse(notiming==turns,1,0),
+            .groups="keep")
 
 
 totals_by_language <- totals_by_source |>
@@ -83,7 +85,8 @@ totals_by_language <- totals_by_source |>
             totaltime = sum.na(totaltime),
             totalsources = n_distinct(source),
             hours= totaltime / 1000 / 3600,
-            participants = sum.na(participants))
+            participants = sum.na(participants),
+            .groups="keep")
 
 
 
@@ -92,7 +95,7 @@ totals_by_language <- totals_by_source |>
 interjections_proportional <- interjections |>
   group_by(language) |>
   #  filter(total_turns > minimum_turns ) |>
-  summarise(interjection_turns = sum(n),
+  reframe(interjection_turns = sum(n),
             total_turns,
             prop_interjections = interjection_turns / total_turns) |>
   slice(1) |>
@@ -232,8 +235,18 @@ extract |>
   geom_label(data=extract |> filter(nwords==1,topturn==1),
              aes(x=begin0,fill=rank,y=line-1+participant_int/2,label=utterance_stripped),
              colour="white",size=2.2,label.padding = unit(0.1, "lines"),hjust=0) +
-  facet_wrap(~ scope,ncol=2) 
+  facet_wrap(~ scope,ncol=1) 
 filename <- paste0("samples/panel-ifadv-interjections.png")
 ggsave(filename,width=8,height=6,bg="white")
+
+
+data |> 
+  ggplot(aes(y=participant,xmin=begin,xmax=end)) +
+  theme_tufte() + theme(legend.position = "none")
+  geom_turn(height=0.8) +
+  geom_token(maxrank=3)
+
+
+
 
 
