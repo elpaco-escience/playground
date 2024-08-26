@@ -32,6 +32,10 @@ library(viridis)
 
 # iteration 1
 
+# not great: when using geom_text() at an angle we can't benefit from ggplot's
+# nice plot margin calculations so we have to set ylim manually using
+# coord_cartesion
+
 conv |>
   filter(source == "/dutch2/DVA12S",
          end < 30000 ) |>
@@ -55,11 +59,15 @@ conv |>
   coord_cartesian(ylim=c(1,10)) +
   theme_turnPlot() + theme(legend.position="none")
 
-# iteration 2
+# Iteration 2: Fish bone plot
 
 conv <- init(ifadv::ifadv) |>
   group_by(source) |>
   mutate(participant = as.character(factor(participant, labels=c("A","B"),ordered=T)))
+
+# what's very hacky (and ugly) about this is that in addition to more manual
+# settings for coord_cartesion, we hardcode the angle to be used by
+# `geom_text()`, as well as the y coordinate for y placement of the text.
 
 this_conv <- conv |>
   filter(source == "/dutch2/DVA12S",
@@ -94,28 +102,33 @@ this_conv |>
   theme_turnPlot() + theme(legend.position="none")
 ggsave("samples/playground-plots_fishbone.png",width=12,height=6,bg="white")
 
+# Iteration 3: using ggrepel
+
+library(ggrepel)
+
+this_conv <- conv |>
+  filter(source == "/dutch2/DVA12S",
+         end < 30000 )
+
 this_conv |>
-  ggplot(aes(x = end, y = participant)) +
+  ggplot(aes(x = begin, y = participant, label=utterance_raw,colour=participant)) +
+  ggtitle("Experimental: Using geom_text_repel()") + 
   geom_turn(aes(
     begin = begin,
     end = end,
     fill = participant),
     height=0.8) +
-  geom_text(data=this_conv |> dplyr::filter(participant=="A"),
-            aes(label=utterance_raw,
-                x=begin),
-            y = 0,
-            angle = -45,
-            hjust=0) +
-  geom_text(data=this_conv |> dplyr::filter(participant=="B"),
-            aes(label=utterance_raw,
-                x=begin),
-            y = 3,
-            angle = 45,
-            hjust = 0) +
+  geom_text_repel(data=this_conv |> dplyr::filter(participant=="A"),
+                  hjust=0,nudge_y = -1,direction="y"
+  ) +
+  geom_text_repel(data=this_conv |> dplyr::filter(participant=="B"),
+                  hjust=0,nudge_y = 1,direction="both"
+  ) +
   scale_fill_brewer(palette = "Dark2") +
   scale_colour_brewer(palette = "Dark2") +
   xlab("Time (ms)") +
   ylab("") +
-  coord_cartesian(ylim=c(-10,10)) +
+  coord_cartesian(ylim=c(-2,4)) +
   theme_turnPlot() + theme(legend.position="none")
+ggsave("samples/playground-plots_fishbone.png",width=12,height=6,bg="white")
+
